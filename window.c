@@ -1,12 +1,16 @@
+//gcc window.c auth.c -o nock -lxcb -lxcb-keysyms -lpam -lpam_misc
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 #include <xcb/xcb_keysyms.h>
 #include <X11/keysym.h>
 #include <unistd.h>
+#include "auth.h"
 
 xcb_connection_t *connection;
 xcb_screen_t *screen;
@@ -48,6 +52,9 @@ int main() {
 	xcb_generic_event_t *event; //universal event type container
 	int running = 1;
 
+	char password[1024] = {0}; 
+	int password_len = 0;
+
 	while (running && (event = xcb_wait_for_event(connection))) {
 
 		if (event->response_type & 0x80) {
@@ -66,7 +73,19 @@ int main() {
 				xcb_keysym_t keysym = xcb_key_symbols_get_keysym(syms, kp->detail, 0); //converting to syms
 
 				if (keysym == XK_Return) {
-					// User pressed Enter, check password!
+
+					password[password_len] = '\0';
+
+					if (auth_user("nirmal")) {
+						printf("Access Granted!\n");
+						running = 0;
+					}
+					else {
+						printf("Acess Denied!\n");
+						memset(password, 0, sizeof(password)); //resetting buffer
+						password_len = 0;															   
+					}
+
 				}
 				else if (keysym == XK_BackSpace) {
 					// User pressed Backspace, delete last character
@@ -74,7 +93,8 @@ int main() {
 				else if (keysym >= XK_a && keysym <= XK_z) {
 					// It's a lowercase letter! typecast it to char to use it
 					char letter = (char)keysym; 
-					printf("You entered %c\n", letter);
+					//printf("You entered %c\n", letter);
+					password[password_len++] = letter;
 				}
 
 				//running = 0;
@@ -85,6 +105,11 @@ int main() {
 		}
 
 		free(event);
+
+		if (strcmp("nirmal", password) == 0) {
+			printf("Correct password entered.\n");
+			break;
+		}
 
 
 	}
