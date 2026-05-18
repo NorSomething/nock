@@ -1,4 +1,4 @@
-//gcc window.c auth.c -o nock -lxcb -lxcb-keysyms -lpam -lpam_misc
+//gcc window.c auth.c -o nock -lxcb -lxcb-keysyms -lpam -lxcb-util
 
 #include <stdint.h>
 #include <stdio.h>
@@ -8,6 +8,7 @@
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 #include <xcb/xcb_keysyms.h>
+#include <xcb/xcb_aux.h>
 #include <X11/keysym.h>
 #include <unistd.h>
 #include "auth.h"
@@ -15,12 +16,12 @@
 xcb_connection_t *connection;
 xcb_screen_t *screen;
 
-void create_window() {
+xcb_window_t create_window() {
 	
 	uint32_t mask;
 	uint32_t values[2];
 
-	xcb_window_t window;
+	xcb_window_t window; //the main lockscreen window
 	xcb_void_cookie_t cookie;
 
 	mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
@@ -37,6 +38,8 @@ void create_window() {
 			     mask, values);
   
 	xcb_map_window(connection, window);
+
+	return window; //giving the window to main to use
 }
 
 int main() {
@@ -46,7 +49,7 @@ int main() {
 	xcb_key_symbols_t *syms = xcb_key_symbols_alloc(connection);
 
 
-	create_window();
+	xcb_window_t window =  create_window();
 	xcb_flush(connection); //send all reqs after window is create_window
 
 	xcb_generic_event_t *event; //universal event type container
@@ -54,6 +57,25 @@ int main() {
 
 	char password[1024] = {0}; 
 	int password_len = 0;
+
+	xcb_flush(connection);
+	xcb_aux_sync(connection); //wait for window to actually be on screen
+
+	//routing input now
+	xcb_grab_keyboard_cookie_t kb_cookie = xcb_grab_keyboard(
+		connection,
+		0,                    // owner_events
+		screen->root,		  // The window to get the keyboard focus
+		XCB_CURRENT_TIME,     // timestamp
+		XCB_GRAB_MODE_ASYNC,  // pointer_mode
+		XCB_GRAB_MODE_ASYNC   // keyboard_mode
+	);
+
+	xcb_grab_keyboard_reply_t *kb_reply = xcb_grab_keyboard_reply(connection, kb_cookie, NULL);
+	free(kb_reply);
+	printf("Keyboard locked to nock now...\n");
+
+	//TODO - add error handling to this lol
 
 	while (running && (event = xcb_wait_for_event(connection))) {
 
@@ -76,7 +98,7 @@ int main() {
 
 					password[password_len] = '\0';
 
-					if (auth_user("nirmal")) {
+					if (auth_user(("nirmal"), password)) {
 						printf("Access Granted!\n");
 						running = 0;
 					}
@@ -88,7 +110,7 @@ int main() {
 
 				}
 				else if (keysym == XK_BackSpace) {
-					// User pressed Backspace, delete last character
+					//add later lol :p
 			    }
 				else if (keysym >= XK_a && keysym <= XK_z) {
 					// It's a lowercase letter! typecast it to char to use it
@@ -106,17 +128,13 @@ int main() {
 
 		free(event);
 
-		if (strcmp("nirmal", password) == 0) {
-			printf("Correct password entered.\n");
-			break;
-		}
-
-
 	}
 
 
 	xcb_disconnect(connection); //cleanup before exit
 	xcb_key_symbols_free(syms);
+	xcb_ungrab_pointer(connection, XCB_CURRENT_TIME);
+	xcb_ungrab_keyboard(connection, XCB_CURRENT_TIME);
 	return 0;
 
 }

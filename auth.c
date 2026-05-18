@@ -3,17 +3,32 @@
 #include <security/pam_misc.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "auth.h"
 
+//custom pam conv func to route inputs from window.c to here cleanly to check - custom password interaction
+static int my_conv(int num_msg, const struct pam_message **msg, struct pam_response **resp, void *password) {
+
+	struct pam_response *p = malloc(sizeof(struct pam_response));
+	p->resp = (char *)malloc(strlen(password)+1);
+	strcpy(p->resp, password);
+	*resp = p;
+		
+	return PAM_SUCCESS;
+
+}
+
 static struct pam_conv conv = {
-	misc_conv,
+	*my_conv,
 	NULL
 };
 
-int auth_user(const char *username) {
+int auth_user(const char *username, const char *pass) {
 
 	pam_handle_t *pamh = NULL; //stores state of AUTH sesh
 	int retval;
+
+	conv.appdata_ptr = (char *)pass;
 
 	retval = pam_start("nock", username, &conv, &pamh);
 
