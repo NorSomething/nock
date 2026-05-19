@@ -110,7 +110,10 @@ int main() {
 
 				}
 				else if (keysym == XK_BackSpace) {
-					//add later lol :p
+
+					password_len--;
+					password[password_len] = '\0';
+
 			    }
 				else if (keysym >= XK_a && keysym <= XK_z) {
 					// It's a lowercase letter! typecast it to char to use it
