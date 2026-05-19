@@ -1,5 +1,3 @@
-//gcc window.c auth.c -o nock -lxcb -lxcb-keysyms -lpam -lxcb-util
-
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,8 +11,58 @@
 #include <unistd.h>
 #include "auth.h"
 
+// TODO - add error handling for the drawing text stuff lol
+
+#define WIDTH 300
+#define HEIGHT 100
+
 xcb_connection_t *connection;
 xcb_screen_t *screen;
+
+static xcb_gc_t getFontGC(xcb_connection_t *connection, xcb_screen_t *screen, xcb_window_t window, const char *font_name) {
+
+	//get font 
+	xcb_font_t font = xcb_generate_id(connection);
+	xcb_void_cookie_t fontCookie = xcb_open_font_checked(connection, font, strlen(font_name), font_name);
+
+
+
+		//creating graphics context
+		xcb_gcontext_t  gc            = xcb_generate_id (connection);
+		uint32_t        mask          = XCB_GC_FOREGROUND | XCB_GC_BACKGROUND | XCB_GC_FONT;
+		uint32_t        value_list[3] = { screen->black_pixel,
+										screen->white_pixel,
+										font };
+
+		xcb_void_cookie_t gcCookie = xcb_create_gc_checked (connection,
+																gc,
+																window,
+																mask,
+																value_list );
+
+
+
+		//close the font
+		fontCookie = xcb_close_font_checked (connection, font);
+		return gc;
+
+
+}
+
+static void draw_text(xcb_connection_t *connection, xcb_screen_t *screen, xcb_window_t window, int16_t x1, int16_t y1, const char *label) {
+
+	//label is the text we will draw
+
+	//getting graphics context
+	xcb_gcontext_t gc = getFontGC(connection, screen, window, "fixed");
+
+	//drawing text
+	xcb_void_cookie_t text_cookie = xcb_image_text_8_checked(connection, strlen(label), window, gc, x1, y1, label);
+
+	//free the gc 
+	xcb_void_cookie_t gcCookie = xcb_free_gc(connection, gc);
+
+}
 
 xcb_window_t create_window() {
 	
@@ -77,6 +125,11 @@ int main() {
 
 	//TODO - add error handling to this lol
 
+	//for user input graphically buffer thingy
+	char temp_buffer[100];
+	char user_input[100];
+	int x = 0;
+
 	while (running && (event = xcb_wait_for_event(connection))) {
 
 		if (event->response_type & 0x80) {
@@ -116,14 +169,34 @@ int main() {
 
 			    }
 				else if (keysym >= XK_a && keysym <= XK_z) {
-					// It's a lowercase letter! typecast it to char to use it
 					char letter = (char)keysym; 
-					//printf("You entered %c\n", letter);
+					user_input[x++] = letter;
+					snprintf(temp_buffer, 17+x+1, "Enter Password : %s", user_input);
+					draw_text(connection, screen, window, 10, 100-10, temp_buffer);
+					xcb_flush(connection);
 					password[password_len++] = letter;
 				}
 
 				//running = 0;
 				break;
+
+			case XCB_EXPOSE:
+				//draw_text(connection, screen, window, 10, 100-10, temp_buffer);
+				//xcb_flush(connection);
+				break;
+
+			case XCB_KEY_RELEASE:
+				xcb_key_release_event_t *kr = (xcb_key_release_event_t *)event;
+
+				switch (kr->detail) {
+				
+					//esc
+					case 9:
+						free(event);
+						xcb_disconnect(connection);
+						return 0;
+
+				}
 
 			default:
 				break;
