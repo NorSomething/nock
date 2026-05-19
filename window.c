@@ -140,7 +140,7 @@ int main() {
 
 		switch (event->response_type) { 
 			//response_type is the actual raw ID of any event
-			
+
 			case XCB_KEY_PRESS:
 
 				xcb_key_press_event_t *kp = (xcb_key_press_event_t *)event;
@@ -158,7 +158,11 @@ int main() {
 					else {
 						printf("Acess Denied!\n");
 						memset(password, 0, sizeof(password)); //resetting buffer
-						password_len = 0;															   
+						password_len = 0;							
+						memset(user_input, 0, sizeof(user_input));
+						x = 0;
+						xcb_clear_area(connection, 1, window, 0, 0, 0, 0); //all zeroes is a special case in xcb for entire window
+						xcb_flush(connection);
 					}
 
 				}
@@ -168,6 +172,16 @@ int main() {
 					password[password_len] = '\0';
 
 			    }
+				else if (keysym == 0x0020) {
+					//spacebar
+					user_input[x++] = ' ';
+					snprintf(temp_buffer, 17+x+1, "Enter Password : %s", user_input);
+					draw_text(connection, screen, window, 10, 100-10, temp_buffer);
+					xcb_flush(connection);
+					password[password_len++] = ' ';
+
+
+				}
 				else if (keysym >= XK_a && keysym <= XK_z) {
 					char letter = (char)keysym; 
 					user_input[x++] = letter;
@@ -181,8 +195,6 @@ int main() {
 				break;
 
 			case XCB_EXPOSE:
-				//draw_text(connection, screen, window, 10, 100-10, temp_buffer);
-				//xcb_flush(connection);
 				break;
 
 			case XCB_KEY_RELEASE:
