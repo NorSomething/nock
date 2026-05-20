@@ -130,6 +130,8 @@ int main() {
 	char user_input[100];
 	int x = 0;
 
+	char *username = getlogin();
+
 	while (running && (event = xcb_wait_for_event(connection))) {
 
 		if (event->response_type & 0x80) {
@@ -151,7 +153,7 @@ int main() {
 
 					password[password_len] = '\0';
 
-					if (auth_user(("nirmal"), password)) {
+					if (auth_user(username, password)) {
 						printf("Access Granted!\n");
 						running = 0;
 					}
@@ -170,6 +172,11 @@ int main() {
 
 					password_len--;
 					password[password_len] = '\0';
+					user_input[x--] = '\0';					xcb_clear_area(connection, 1, window, 0, 0, 0, 0); //all zeroes is a special case in xcb for entire window
+					snprintf(temp_buffer, 17+x+1, "Enter Password : %s", user_input);
+					draw_text(connection, screen, window, 10, 100-10, temp_buffer);
+					xcb_flush(connection);
+
 
 			    }
 				else if (keysym == 0x0020) {
