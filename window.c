@@ -27,24 +27,16 @@ static xcb_gc_t getFontGC(xcb_connection_t *connection, xcb_screen_t *screen, xc
 
 
 
-		//creating graphics context
-		xcb_gcontext_t  gc            = xcb_generate_id (connection);
-		uint32_t        mask          = XCB_GC_FOREGROUND | XCB_GC_BACKGROUND | XCB_GC_FONT;
-		uint32_t        value_list[3] = { screen->black_pixel,
-										screen->white_pixel,
-										font };
+	//creating graphics context
+	xcb_gcontext_t  gc            = xcb_generate_id (connection);
+	uint32_t        mask          = XCB_GC_FOREGROUND | XCB_GC_BACKGROUND | XCB_GC_FONT;
+	uint32_t        value_list[3] = { screen->black_pixel, screen->white_pixel,	font };
 
-		xcb_void_cookie_t gcCookie = xcb_create_gc_checked (connection,
-																gc,
-																window,
-																mask,
-																value_list );
+	xcb_void_cookie_t gcCookie = xcb_create_gc_checked (connection, gc, window, mask, value_list );
 
-
-
-		//close the font
-		fontCookie = xcb_close_font_checked (connection, font);
-		return gc;
+	//close the font
+	fontCookie = xcb_close_font_checked (connection, font);
+	return gc;
 
 
 }
@@ -77,13 +69,7 @@ xcb_window_t create_window() {
 	values[1] = XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_KEY_PRESS;
 
 	window = xcb_generate_id(connection);
-	cookie = xcb_create_window(connection,
-			     XCB_COPY_FROM_PARENT, window, screen->root,
-			     0, 0, 640, 480,
-			     0,
-			     XCB_WINDOW_CLASS_INPUT_OUTPUT,
-			     screen->root_visual,
-			     mask, values);
+	cookie = xcb_create_window(connection, XCB_COPY_FROM_PARENT, window, screen->root, 0, 0, 640, 480, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, mask, values);
   
 	xcb_map_window(connection, window);
 
@@ -202,6 +188,11 @@ int main() {
 				break;
 
 			case XCB_EXPOSE:
+				char temp[100];
+				snprintf(temp, 26+strlen(username), "Enter password of user %s", username);
+				draw_text(connection, screen, window, 10, 100-30, temp);
+				draw_text(connection, screen, window, 10, 100-10, "Enter Password : ");
+				xcb_flush(connection);
 				break;
 
 			case XCB_KEY_RELEASE:
