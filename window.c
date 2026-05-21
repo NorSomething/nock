@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -135,16 +136,28 @@ int main() {
 
 				xcb_keysym_t keysym = xcb_key_symbols_get_keysym(syms, kp->detail, 0); //converting to syms
 
+				if (kp->state & XCB_MOD_MASK_SHIFT) {
+					//if shift key is held down
+					keysym = xcb_key_symbols_get_keysym(syms, kp->detail, 1);
+
+				}
+
 				if (keysym == XK_Return) {
 
 					password[password_len] = '\0';
 
 					if (auth_user(username, password)) {
 						printf("Access Granted!\n");
+						draw_text(connection, screen, window, 10, 100+60, "Access Granted!.");
+						xcb_flush(connection);
+						usleep(500000);
 						running = 0;
 					}
 					else {
 						printf("Acess Denied!\n");
+						draw_text(connection, screen, window, 10, 100+60, "Access Denied... Try Again!");
+						xcb_flush(connection);
+						usleep(500000);
 						memset(password, 0, sizeof(password)); //resetting buffer
 						password_len = 0;							
 						memset(user_input, 0, sizeof(user_input));
@@ -156,15 +169,19 @@ int main() {
 				}
 				else if (keysym == XK_BackSpace) {
 
-					password_len--;
-					password[password_len] = '\0';
-					user_input[x--] = '\0';					xcb_clear_area(connection, 1, window, 0, 0, 0, 0); //all zeroes is a special case in xcb for entire window
-					snprintf(temp_buffer, 17+x+1, "Enter Password : %s", user_input);
-					draw_text(connection, screen, window, 10, 100-10, temp_buffer);
-					xcb_flush(connection);
+					if (x > 0 && password_len > 0) {
+						password_len--;
+						password[password_len] = '\0';
+						user_input[x--] = '\0';				
+						xcb_clear_area(connection, 1, window, 0, 0, 0, 0); //all zeroes is a special case in xcb for entire window
+						snprintf(temp_buffer, 17+x+1, "Enter Password : %s", user_input);
+						draw_text(connection, screen, window, 10, 100-10, temp_buffer);
+						xcb_flush(connection);
+					}
 
 
 			    }
+
 				else if (keysym == 0x0020) {
 					//spacebar
 					user_input[x++] = ' ';
@@ -175,7 +192,7 @@ int main() {
 
 
 				}
-				else if (keysym >= XK_a && keysym <= XK_z) {
+				else if ((keysym >= XK_a && keysym <= XK_z) || (keysym >= XK_0 && keysym <= XK_9) || (keysym >= XK_A && keysym <= XK_Z)) {
 					char letter = (char)keysym; 
 					user_input[x++] = letter;
 					snprintf(temp_buffer, 17+x+1, "Enter Password : %s", user_input);
@@ -183,6 +200,18 @@ int main() {
 					xcb_flush(connection);
 					password[password_len++] = letter;
 				}
+
+				else {
+					char letter = (char)keysym; 
+					if ((letter >= 32 && letter <= 47) || (letter >= 58 && letter <= 64) || (letter >= 91 && letter <= 96) || (letter >= 123 && letter <= 126)) {
+						user_input[x++] = letter;
+						snprintf(temp_buffer, 17+x+1, "Enter Password : %s", user_input);
+						draw_text(connection, screen, window, 10, 100-10, temp_buffer);
+						xcb_flush(connection);
+						password[password_len++] = letter;
+					}
+				}
+
 
 				//running = 0;
 				break;
