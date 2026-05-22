@@ -119,6 +119,8 @@ int main() {
 
 	char *username = getlogin();
 
+	int char_hide = 1;
+
 	while (running && (event = xcb_wait_for_event(connection))) {
 
 		if (event->response_type & 0x80) {
@@ -194,8 +196,15 @@ int main() {
 				}
 				else if ((keysym >= XK_a && keysym <= XK_z) || (keysym >= XK_0 && keysym <= XK_9) || (keysym >= XK_A && keysym <= XK_Z)) {
 					char letter = (char)keysym; 
-					user_input[x++] = letter;
-					snprintf(temp_buffer, 17+x+1, "Enter Password : %s", user_input);
+					if (char_hide == 1) {
+						user_input[x++] = '*';
+						snprintf(temp_buffer, 17+x+1, "Enter Password : %s", user_input);
+					}
+					else {
+						user_input[x++] = letter;
+						snprintf(temp_buffer, 17+x+1, "Enter Password : %s", user_input);
+					}
+					
 					draw_text(connection, screen, window, 10, 100-10, temp_buffer);
 					xcb_flush(connection);
 					password[password_len++] = letter;
@@ -204,8 +213,14 @@ int main() {
 				else {
 					char letter = (char)keysym; 
 					if ((letter >= 32 && letter <= 47) || (letter >= 58 && letter <= 64) || (letter >= 91 && letter <= 96) || (letter >= 123 && letter <= 126)) {
-						user_input[x++] = letter;
-						snprintf(temp_buffer, 17+x+1, "Enter Password : %s", user_input);
+						if (char_hide == 1) {
+							user_input[x++] = '*';
+							snprintf(temp_buffer, 17+x+1, "Enter Password : %s", user_input);
+						}
+						else {
+							user_input[x++] = letter;
+							snprintf(temp_buffer, 17+x+1, "Enter Password : %s", user_input);
+						}
 						draw_text(connection, screen, window, 10, 100-10, temp_buffer);
 						xcb_flush(connection);
 						password[password_len++] = letter;
