@@ -1,4 +1,3 @@
-#include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,7 +29,7 @@ static xcb_gc_t getFontGC(xcb_connection_t *connection, xcb_screen_t *screen, xc
 
 	//creating graphics context
 	xcb_gcontext_t  gc            = xcb_generate_id (connection);
-	uint32_t        mask          = XCB_GC_FOREGROUND | XCB_GC_BACKGROUND | XCB_GC_FONT;
+	uint32_t        mask          = XCB_GC_FOREGROUND | XCB_GC_BACKGROUND | XCB_GC_FONT | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE;
 	uint32_t        value_list[3] = { screen->black_pixel, screen->white_pixel,	font };
 
 	xcb_void_cookie_t gcCookie = xcb_create_gc_checked (connection, gc, window, mask, value_list );
@@ -67,10 +66,10 @@ xcb_window_t create_window() {
 
 	mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
 	values[0] = screen->white_pixel;
-	values[1] = XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_KEY_PRESS;
+	values[1] = XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_BUTTON_PRESS;
 
 	window = xcb_generate_id(connection);
-	cookie = xcb_create_window(connection, XCB_COPY_FROM_PARENT, window, screen->root, 0, 0, 640, 480, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, mask, values);
+	cookie = xcb_create_window(connection, XCB_COPY_FROM_PARENT, window, screen->root, 0, 0, 1920, 1080, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, mask, values);
   
 	xcb_map_window(connection, window);
 
@@ -119,7 +118,7 @@ int main() {
 
 	char *username = getlogin();
 
-	int char_hide = 1;
+	int char_hide = 0;
 
 	while (running && (event = xcb_wait_for_event(connection))) {
 
@@ -131,6 +130,27 @@ int main() {
 
 		switch (event->response_type) { 
 			//response_type is the actual raw ID of any event
+			
+			case XCB_BUTTON_PRESS:
+				xcb_button_press_event_t *bp = (xcb_button_press_event_t *)event;
+				switch (bp->detail) {
+					case 4:
+						break;
+					default:
+						char_hide = !char_hide;
+						if (char_hide == 0) {
+							xcb_clear_area(connection, 0, window, 10, 100+90, 10, 34); //setting it to 0 so we dont force an expose event here 
+							draw_text(connection, screen, window, 10, 100+90, "Hide Password : Disabled");
+							xcb_flush(connection);
+						}
+						else if (char_hide == 1) {
+							xcb_clear_area(connection, 0, window, 10, 100+90, 10, 33);  //setting it to 0 so we dont force an expose event here 
+							draw_text(connection, screen, window, 10, 100+90, "Hide Password : Enabled");
+							xcb_flush(connection);
+						}
+
+				}
+				break;
 
 			case XCB_KEY_PRESS:
 
@@ -236,6 +256,17 @@ int main() {
 				snprintf(temp, 26+strlen(username), "Enter password of user %s", username);
 				draw_text(connection, screen, window, 10, 100-30, temp);
 				draw_text(connection, screen, window, 10, 100-10, "Enter Password : ");
+
+				if (char_hide == 0) {
+					xcb_clear_area(connection, 0, window, 10, 100+90, 10, 34); //setting it to 0 so we dont force an expose event here 
+					draw_text(connection, screen, window, 10, 100+90, "Hide Password : Disabled");
+					xcb_flush(connection);
+				}
+				else if (char_hide == 1) {
+					xcb_clear_area(connection, 0, window, 10, 100+90, 10, 33);  //setting it to 0 so we dont force an expose event here 
+					draw_text(connection, screen, window, 10, 100+90, "Hide Password : Enabled");
+					xcb_flush(connection);
+				}
 				xcb_flush(connection);
 				break;
 
@@ -251,6 +282,9 @@ int main() {
 						return 0;
 
 				}
+
+
+
 
 			default:
 				break;
