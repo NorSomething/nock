@@ -2,7 +2,7 @@
 
 A minimal X11 screen locker built with XCB and PAM.
 
----
+<img width="366" height="326" alt="image" src="https://github.com/user-attachments/assets/3989c303-599c-4c17-9985-267f56732b7d" />
 
 
 
