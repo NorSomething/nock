@@ -62,7 +62,7 @@ xcb_window_t create_window() {
 	uint32_t values[2];
 
 	xcb_window_t window; //the main lockscreen window
-	xcb_void_cookie_t cookie;
+	xcb_void_cookie_t cookie; //sequence numbers wrapped in struct - like a ticket that xcb takes when it wants to use that thingy
 
 	mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
 	values[0] = screen->white_pixel;
@@ -70,6 +70,19 @@ xcb_window_t create_window() {
 
 	window = xcb_generate_id(connection);
 	cookie = xcb_create_window(connection, XCB_COPY_FROM_PARENT, window, screen->root, 0, 0, 1920, 1080, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, mask, values);
+
+	// Set _NET_WM_STATE_FULLSCREEN - i3lock way of going true fullscreen (EWMH protocol)
+	xcb_intern_atom_cookie_t state_cookie = xcb_intern_atom(connection, 0, strlen("_NET_WM_STATE"), "_NET_WM_STATE");
+	xcb_intern_atom_cookie_t fs_cookie    = xcb_intern_atom(connection, 0, strlen("_NET_WM_STATE_FULLSCREEN"), "_NET_WM_STATE_FULLSCREEN"); //getting integer id for the strings
+
+	xcb_intern_atom_reply_t *state_reply = xcb_intern_atom_reply(connection, state_cookie, NULL); //these actually hold the integers
+	xcb_intern_atom_reply_t *fs_reply    = xcb_intern_atom_reply(connection, fs_cookie, NULL);
+
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, state_reply->atom, XCB_ATOM_ATOM, 32, 1, &fs_reply->atom);
+
+	free(state_reply);
+	free(fs_reply);
+	//they have to be before mapping the window to the conncetion
   
 	xcb_map_window(connection, window);
 
